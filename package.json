@@ -1,19 +1,19 @@
 {
-  "name": "vscode-example-test-adapter",
-  "displayName": "Example Test Explorer",
-  "description": "Run your Example tests in the Sidebar of Visual Studio Code",
-  "icon": "img/icon.png",
-  "author": "Holger Benl <hbenl@evandor.de>",
-  "publisher": "hbenl",
-  "version": "0.0.1",
+  "name": "omnisharp-test-adapter",
+  "displayName": "Omnisharp Test Explorer",
+  "description": "Run your C# tests in the Sidebar of Visual Studio Code",
+  "icon": "icon.png",
+  "author": "Joshua Brooks <samirat@github.com>",
+  "publisher": "samirat",
+  "version": "1.0.0",
   "license": "MIT",
-  "homepage": "https://github.com/hbenl/vscode-example-test-adapter",
+  "homepage": "https://github.com/samirat/omnisharp-test-adapter",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hbenl/vscode-example-test-adapter.git"
+    "url": "https://github.com/samirat/omnisharp-test-adapter.git"
   },
   "bugs": {
-    "url": "https://github.com/hbenl/vscode-example-test-adapter/issues"
+    "url": "https://github.com/samirat/omnisharp-test-adapter/issues"
   },
   "categories": [
     "Other"
@@ -34,18 +34,21 @@
   "dependencies": {
     "tslib": "^1.9.3",
     "vscode-test-adapter-api": "^1.7.0",
-    "vscode-test-adapter-util": "^0.7.0"
+    "vscode-test-adapter-util": "^0.7.0",
+    "rxjs": "6.4.0"
   },
   "devDependencies": {
-    "@types/vscode": "~1.23.0",
+    "@types/vscode": "~1.42.0",
     "typescript": "^3.5.3",
+    "vscode": "1.1.36",
     "vsce": "^1.65.0"
   },
   "engines": {
     "vscode": "^1.23.0"
   },
   "extensionDependencies": [
-    "hbenl.vscode-test-explorer"
+    "hbenl.vscode-test-explorer",
+    "ms-vscode.csharp"
   ],
   "activationEvents": [
     "*"
@@ -53,15 +56,16 @@
   "contributes": {
     "configuration": {
       "type": "object",
-      "title": "Example Test Explorer configuration",
+      "title": "Omnisharp Test Adapter Configuration",
       "properties": {
-        "exampleExplorer.logpanel": {
-          "description": "write diagnotic logs to an output panel",
+        "omnisharpTestAdapter.logpanel": {
+          "description": "Write diagnostic logs to an output panel",
           "type": "boolean",
-          "scope": "resource"
+          "scope": "resource",
+          "default": true
         },
-        "exampleExplorer.logfile": {
-          "description": "write diagnostic logs to the given file",
+        "omnisharpTestAdapter.logfile": {
+          "description": "Write diagnostic logs to the given file",
           "type": "string",
           "scope": "resource"
         }
