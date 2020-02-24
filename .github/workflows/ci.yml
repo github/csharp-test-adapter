@@ -21,13 +21,13 @@ jobs:
     - run: npm run build --if-present
     - run: mkdir artifact
     - run: sudo npm install -g vsce
-    - run: vsce package -o ./artifact/omnisharp-test-adapter.vsix
+    - run: vsce package
       env:
         CI: true
         
     - name: Upload artifact
       uses: actions/upload-artifact@v1.0.0
       with:
-        name: omnisharp-test-adapter.vsix
-        path: ./artifact/omnisharp-test-adapter.vsix
+        name: omnisharp-test-adapter
+        path: ./artifact
 
