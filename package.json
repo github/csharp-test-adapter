@@ -1,19 +1,19 @@
 {
-  "name": "omnisharp-test-adapter",
-  "displayName": "Omnisharp Test Explorer",
-  "description": "Run your C# tests in the Sidebar of Visual Studio Code",
+  "name": "csharp-test-adapter",
+  "displayName": "C# Test Adapter",
+  "description": "Run C# tests in the sidebar of Visual Studio Code",
   "icon": "icon.png",
   "author": "Joshua Brooks <samirat@github.com>",
-  "publisher": "samirat",
-  "version": "1.0.0",
+  "publisher": "github",
+  "version": "1.0.1",
   "license": "MIT",
-  "homepage": "https://github.com/samirat/omnisharp-test-adapter",
+  "homepage": "https://github.com/github/csharp-test-adapter",
   "repository": {
     "type": "git",
-    "url": "https://github.com/samirat/omnisharp-test-adapter.git"
+    "url": "https://github.com/github/csharp-test-adapter.git"
   },
   "bugs": {
-    "url": "https://github.com/samirat/omnisharp-test-adapter/issues"
+    "url": "https://github.com/github/csharp-test-adapter/issues"
   },
   "categories": [
     "Other"
@@ -32,16 +32,18 @@
     "publish": "vsce publish"
   },
   "dependencies": {
+    "minimatch": "^3.0.4",
     "tslib": "^1.9.3",
     "vscode-test-adapter-api": "^1.7.0",
     "vscode-test-adapter-util": "^0.7.0",
     "rxjs": "6.4.0"
   },
   "devDependencies": {
+    "@types/minimatch": "^3.0.3",
     "@types/vscode": "~1.42.0",
     "typescript": "^3.5.3",
-    "vscode": "1.1.36",
-    "vsce": "^1.65.0"
+    "vsce": "^1.65.0",
+    "vscode": "1.1.36"
   },
   "engines": {
     "vscode": "^1.42.0"
@@ -56,17 +58,25 @@
   "contributes": {
     "configuration": {
       "type": "object",
-      "title": "Omnisharp Test Adapter Configuration",
+      "title": "C# test adapter configuration",
       "properties": {
-        "omnisharpTestAdapter.logpanel": {
-          "description": "Write diagnostic logs to an output panel",
+        "csharpTestAdapter.logpanel": {
+          "description": "Write diagnostic logs to the output panel",
           "type": "boolean",
           "scope": "resource",
           "default": true
         },
-        "omnisharpTestAdapter.logfile": {
+        "csharpTestAdapter.logfile": {
           "description": "Write diagnostic logs to the given file",
           "type": "string",
+          "scope": "resource"
+        },
+        "csharpTestAdapter.testProjectFilter": {
+          "description": "Glob filters for the projects in which to search for tests",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
           "scope": "resource"
         }
       }

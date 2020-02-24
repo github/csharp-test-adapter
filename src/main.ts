@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { OmnisharpAdapter } from './adapter';
+import { CSharpAdapter } from './adapter';
 
 export async function activate(context: vscode.ExtensionContext) {
 
-    OmnisharpAdapter.register(context);
+    CSharpAdapter.register(context);
 }
