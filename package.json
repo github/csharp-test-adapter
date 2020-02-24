@@ -44,7 +44,7 @@
     "vsce": "^1.65.0"
   },
   "engines": {
-    "vscode": "^1.23.0"
+    "vscode": "^1.42.0"
   },
   "extensionDependencies": [
     "hbenl.vscode-test-explorer",
