@@ -29,5 +29,5 @@ jobs:
       uses: actions/upload-artifact@v1.0.0
       with:
         name: omnisharp-test-adapter
-        path: ./artifact
+        path: ./artifact/*
 
