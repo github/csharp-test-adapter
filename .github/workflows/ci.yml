@@ -28,6 +28,6 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v1.0.0
       with:
-        name: omnisharp-vscode.vsix
+        name: omnisharp-test-adapter.vsix
         path: ./artifact/omnisharp-test-adapter.vsix
 
