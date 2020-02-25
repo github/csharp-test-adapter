@@ -11,6 +11,7 @@ import { BaseEvent, ReportDotNetTestResults, WorkspaceInformationUpdated, DotNet
 import { EventType } from './omnisharp/EventType';
 import { Project, ProjectInfo, ClassInfo, TestMethodInfo } from './models';
 import * as Minimatch from 'minimatch'
+import * as utilities from './utilities'
 
 export class CSharpAdapter implements TestAdapter {
 
@@ -103,6 +104,11 @@ export class CSharpAdapter implements TestAdapter {
     {
         try {
             this.log.info("Refreshing workspace...");
+            if (!this.projects || this.projects.size === 0) {
+                this.log.info("No projects currently found. Omnisharp may still be loading. Waiting for workspace update.");
+                return;
+            }
+
             for (let [, project] of this.projects) {
 
                 // Check if project has changed
@@ -122,11 +128,13 @@ export class CSharpAdapter implements TestAdapter {
 
                 this.log.info(`Project ${project.Name} has changed. Rediscovering tests...`);
                 let tests = await (await this.testManager).discoverTests(project.SourceFile, "mstest", true);
-                this.log.info(`Project ${project.Name}: Discovered tests ${JSON.stringify(tests.map(o => o.FullyQualifiedName))}.`);
-                this._loadTestSuite(project, tests);
-                this.suite.children = Array.from<ProjectInfo>(this.projectMap.values());
-
-                this.testsEmitter.fire(<TestLoadFinishedEvent>{ type: 'finished', suite: this.suite });
+                
+                if (tests && tests.length > 0) {
+                    this.log.info(`Project ${project.Name}: Discovered tests ${JSON.stringify(tests.map(o => o.FullyQualifiedName))}.`);
+                    this._loadTestSuite(project, tests);
+                    this.suite.children = Array.from<ProjectInfo>(this.projectMap.values());
+                    this.testsEmitter.fire(<TestLoadFinishedEvent>{ type: 'finished', suite: this.suite });
+                }
             }
         }
         catch (error) {
@@ -144,14 +152,10 @@ export class CSharpAdapter implements TestAdapter {
 
             this.testStatesEmitter.fire(<TestRunStartedEvent>{ type: 'started', tests });
 
-            let builtAssemblies = new Set<string>();
             const testInfos = this._findTests(tests);
-            for (const test of testInfos) {
-                let alreadyBuilt = builtAssemblies.has(test.assembly);
-                await (await this.testManager).runDotnetTest(test.fullName, test.file, 'mstest', alreadyBuilt);
-                if (!alreadyBuilt) {
-                    builtAssemblies.add(test.assembly);
-                }
+            const testsByAssembly = utilities.groupBy(testInfos, 'assembly');
+            for (let [assembly, tests] of Object.entries(testsByAssembly)) {
+                await (await this.testManager).runDotnetTestsInClass(assembly, tests.map(o => o.fullName), tests[0].file, 'mstest', false);
             }
 
             this.testStatesEmitter.fire(<TestRunFinishedEvent>{ type: 'finished' });
@@ -167,15 +171,12 @@ export class CSharpAdapter implements TestAdapter {
 
             this.testStatesEmitter.fire(<TestRunStartedEvent>{ type: 'started', tests });
 
-            let builtAssemblies = new Set<string>();
             const testInfos = this._findTests(tests);
-            for (const test of testInfos) {
-                let alreadyBuilt = builtAssemblies.has(test.assembly);
-                await (await this.testManager).debugDotnetTest(test.fullName, test.file, 'mstest', alreadyBuilt);
-                if (!alreadyBuilt) {
-                    builtAssemblies.add(test.assembly);
-                }
+            const testsByAssembly = utilities.groupBy(testInfos, 'assembly');
+            for (let [assembly, tests] of Object.entries(testsByAssembly)) {
+                await (await this.testManager).debugDotnetTestsInClass(assembly, tests.map(o => o.fullName), tests[0].file, 'mstest', false);
             }
+
 
             this.testStatesEmitter.fire(<TestRunFinishedEvent>{ type: 'finished' });
         }
@@ -259,12 +260,7 @@ export class CSharpAdapter implements TestAdapter {
             line: 0
         };
 
-        let testFiles: { [key: string]: V2.TestInfo[]; } = {};
-        testFiles = tests.reduce<any>((rv : any, x: V2.TestInfo) => {
-            (rv[x.CodeFilePath] = rv[x.CodeFilePath] || []).push(x);
-            return rv;
-        }, {});
-        
+        let testFiles = utilities.groupBy(tests, 'CodeFilePath');
         projectInfo.children = Object.values(testFiles).map(testGroup => {
             let className = path.basename(testGroup[0].CodeFilePath, '.cs');
             let testClassSuite = <ClassInfo> {
