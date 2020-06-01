@@ -40,17 +40,17 @@
   },
   "devDependencies": {
     "@types/minimatch": "^3.0.3",
-    "@types/vscode": "~1.42.0",
+    "@types/vscode": "^1.42.0",
     "typescript": "^3.5.3",
     "vsce": "^1.65.0",
-    "vscode": "1.1.36"
+    "vscode-test": "^1.4.0"
   },
   "engines": {
     "vscode": "^1.42.0"
   },
   "extensionDependencies": [
     "hbenl.vscode-test-explorer",
-    "ms-vscode.csharp"
+    "ms-dotnettools.csharp"
   ],
   "activationEvents": [
     "*"
