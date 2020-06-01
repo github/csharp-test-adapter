@@ -42,7 +42,7 @@ export class CSharpAdapter implements TestAdapter {
 
     static async register(context: vscode.ExtensionContext) {
 
-        const csharpExtension = vscode.extensions.getExtension<CSharpExtensionExports>("ms-vscode.csharp");
+        const csharpExtension = vscode.extensions.getExtension<CSharpExtensionExports>("ms-dotnettools.csharp");
         if (!csharpExtension) {
             throw "C# extension not found";
         }
