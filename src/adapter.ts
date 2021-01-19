@@ -40,7 +40,7 @@ export class OmnisharpAdapter implements TestAdapter {
 
     static async register(context: vscode.ExtensionContext) {
 
-        const csharpExtension = vscode.extensions.getExtension<CSharpExtensionExports>("ms-vscode.csharp");
+        const csharpExtension = vscode.extensions.getExtension<CSharpExtensionExports>("ms-dotnettools.csharp");
         if (!csharpExtension) {
             throw "C# extension not found";
         }
@@ -121,7 +121,7 @@ export class OmnisharpAdapter implements TestAdapter {
                 }
 
                 this.log.info(`Project ${project.Name} has changed. Rediscovering tests...`);
-                let tests = await (await this.testManager).discoverTests(project.SourceFile, "mstest", false);
+                let tests = await (await this.testManager).discoverTests(project.SourceFile, "mstest", true);
                 this.log.info(`Project ${project.Name}: Discovered tests ${JSON.stringify(tests.map(o => o.FullyQualifiedName))}.`);
                 this._loadTestSuite(project, tests);
                 this.suite.children = Array.from<ProjectInfo>(this.projectMap.values());

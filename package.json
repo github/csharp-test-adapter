@@ -48,7 +48,7 @@
   },
   "extensionDependencies": [
     "hbenl.vscode-test-explorer",
-    "ms-vscode.csharp"
+    "ms-dotnettools.csharp"
   ],
   "activationEvents": [
     "*"
