@@ -10,13 +10,15 @@ import { EventStream } from './omnisharp/EventStream';
 import { BaseEvent, ReportDotNetTestResults, WorkspaceInformationUpdated, DotNetTestRunStart } from './omnisharp/loggingEvents';
 import { EventType } from './omnisharp/EventType';
 import { Project, ProjectInfo, ClassInfo, TestMethodInfo } from './models';
+import * as Minimatch from 'minimatch'
+import * as utilities from './utilities'
 
-export class OmnisharpAdapter implements TestAdapter {
+export class CSharpAdapter implements TestAdapter {
 
     private disposables: { dispose(): void }[] = [];
     private setupDisposables: { dispose(): void }[] = [];
 
-    private static instance: OmnisharpAdapter;
+    private static instance: CSharpAdapter;
 
     private readonly testsEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
     private readonly testStatesEmitter = new vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
@@ -51,9 +53,9 @@ export class OmnisharpAdapter implements TestAdapter {
         }
 
         // If an adapter has already been created, this is getting called because of a workspace change. Update the old one.
-        if (OmnisharpAdapter.instance != null) {
-            OmnisharpAdapter.instance._setup(csharpExtension.exports.eventStream, csharpExtension.exports.getTestManager());
-            OmnisharpAdapter.instance._refresh();
+        if (CSharpAdapter.instance != null) {
+            CSharpAdapter.instance._setup(csharpExtension.exports.eventStream, csharpExtension.exports.getTestManager());
+            CSharpAdapter.instance._refresh();
             return;
         }
 
@@ -62,17 +64,15 @@ export class OmnisharpAdapter implements TestAdapter {
         if (testExplorerExtension) {
             const testHub = testExplorerExtension.exports;
             
-            const log = new Log('omnisharpTestAdapter', workspaceRootFolder, 'Omnisharp Test Adapter');
+            const log = new Log('csharpTestAdapter', workspaceRootFolder, 'C# Test Adapter');
             context.subscriptions.push(log);
             
-            OmnisharpAdapter.instance = new OmnisharpAdapter(log, csharpExtension.exports.getTestManager());
-            OmnisharpAdapter.instance._setup(csharpExtension.exports.eventStream, csharpExtension.exports.getTestManager());
-            testHub.registerTestAdapter(OmnisharpAdapter.instance);
+            CSharpAdapter.instance = new CSharpAdapter(log, csharpExtension.exports.getTestManager());
+            CSharpAdapter.instance._setup(csharpExtension.exports.eventStream, csharpExtension.exports.getTestManager());
+            testHub.registerTestAdapter(CSharpAdapter.instance);
         }
     }
 
-    // Omnisharp requires a specific file for most of its functions, in order to find the project. It doesn't actually matter if we're referring to tests inside
-    // that particular file.
     constructor(
         private readonly log: Log,
         private testManager: Promise<TestManager>
@@ -104,7 +104,13 @@ export class OmnisharpAdapter implements TestAdapter {
     {
         try {
             this.log.info("Refreshing workspace...");
+            if (!this.projects || this.projects.size === 0) {
+                this.log.info("No projects currently found. Omnisharp may still be loading. Waiting for workspace update.");
+                return;
+            }
+
             for (let [, project] of this.projects) {
+
                 // Check if project has changed
                 let projectChanged = false;
                 for (let [outputFile, lastModified] of project.OutputFiles) {
@@ -122,11 +128,13 @@ export class OmnisharpAdapter implements TestAdapter {
 
                 this.log.info(`Project ${project.Name} has changed. Rediscovering tests...`);
                 let tests = await (await this.testManager).discoverTests(project.SourceFile, "mstest", true);
-                this.log.info(`Project ${project.Name}: Discovered tests ${JSON.stringify(tests.map(o => o.FullyQualifiedName))}.`);
-                this._loadTestSuite(project, tests);
-                this.suite.children = Array.from<ProjectInfo>(this.projectMap.values());
-
-                this.testsEmitter.fire(<TestLoadFinishedEvent>{ type: 'finished', suite: this.suite });
+                
+                if (tests && tests.length > 0) {
+                    this.log.info(`Project ${project.Name}: Discovered tests ${JSON.stringify(tests.map(o => o.FullyQualifiedName))}.`);
+                    this._loadTestSuite(project, tests);
+                    this.suite.children = Array.from<ProjectInfo>(this.projectMap.values());
+                    this.testsEmitter.fire(<TestLoadFinishedEvent>{ type: 'finished', suite: this.suite });
+                }
             }
         }
         catch (error) {
@@ -144,14 +152,10 @@ export class OmnisharpAdapter implements TestAdapter {
 
             this.testStatesEmitter.fire(<TestRunStartedEvent>{ type: 'started', tests });
 
-            let builtAssemblies = new Set<string>();
             const testInfos = this._findTests(tests);
-            for (const test of testInfos) {
-                let alreadyBuilt = builtAssemblies.has(test.assembly);
-                await (await this.testManager).runDotnetTest(test.fullName, test.file, 'mstest', alreadyBuilt);
-                if (!alreadyBuilt) {
-                    builtAssemblies.add(test.assembly);
-                }
+            const testsByAssembly = utilities.groupBy(testInfos, 'assembly');
+            for (let [assembly, tests] of Object.entries(testsByAssembly)) {
+                await (await this.testManager).runDotnetTestsInClass(assembly, tests.map(o => o.fullName), tests[0].file, 'mstest', false);
             }
 
             this.testStatesEmitter.fire(<TestRunFinishedEvent>{ type: 'finished' });
@@ -167,15 +171,12 @@ export class OmnisharpAdapter implements TestAdapter {
 
             this.testStatesEmitter.fire(<TestRunStartedEvent>{ type: 'started', tests });
 
-            let builtAssemblies = new Set<string>();
             const testInfos = this._findTests(tests);
-            for (const test of testInfos) {
-                let alreadyBuilt = builtAssemblies.has(test.assembly);
-                await (await this.testManager).debugDotnetTest(test.fullName, test.file, 'mstest', alreadyBuilt);
-                if (!alreadyBuilt) {
-                    builtAssemblies.add(test.assembly);
-                }
+            const testsByAssembly = utilities.groupBy(testInfos, 'assembly');
+            for (let [assembly, tests] of Object.entries(testsByAssembly)) {
+                await (await this.testManager).debugDotnetTestsInClass(assembly, tests.map(o => o.fullName), tests[0].file, 'mstest', false);
             }
+
 
             this.testStatesEmitter.fire(<TestRunFinishedEvent>{ type: 'finished' });
         }
@@ -186,8 +187,7 @@ export class OmnisharpAdapter implements TestAdapter {
 
 
     cancel(): void {
-        // in a "real" TestAdapter this would kill the child process for the current test run (if there is any)
-        throw new Error("Method not implemented.");
+        this.log.error("Cancellation is not currently supported.");
     }
 
     dispose(): void {
@@ -259,12 +259,7 @@ export class OmnisharpAdapter implements TestAdapter {
             line: 0
         };
 
-        let testFiles: { [key: string]: V2.TestInfo[]; } = {};
-        testFiles = tests.reduce<any>((rv : any, x: V2.TestInfo) => {
-            (rv[x.CodeFilePath] = rv[x.CodeFilePath] || []).push(x);
-            return rv;
-        }, {});
-        
+        let testFiles = utilities.groupBy(tests, 'CodeFilePath');
         projectInfo.children = Object.values(testFiles).map(testGroup => {
             let className = path.basename(testGroup[0].CodeFilePath, '.cs');
             let testClassSuite = <ClassInfo> {
@@ -300,6 +295,19 @@ export class OmnisharpAdapter implements TestAdapter {
         return projectInfo;
     }
 
+    private static _checkFilters(path: string, filters: (string[] | undefined)) : boolean {
+        if (!filters || filters.length == 0) {
+            return true;
+        }
+
+        for (const filter of filters) {
+            if (Minimatch.match([path], filter, <Minimatch.IOptions>{ nocase: true }).length > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private _handleEvent(event: BaseEvent): void {
         try {
             switch (event.type) {
@@ -323,9 +331,12 @@ export class OmnisharpAdapter implements TestAdapter {
 
     private _handleWorkspaceInformationUpdated(event: WorkspaceInformationUpdated) {
         let newProjects = new Map<string, Project>();
+
+        // Check glob expression filters for the project
+        const filters = vscode.workspace.getConfiguration("csharpTestAdapter").get<string[]>("testProjectFilter");
         if (event.info.DotNet && event.info.DotNet.Projects) {
             for (const project of event.info.DotNet.Projects) {
-                if (project.SourceFiles && project.SourceFiles.length > 0) {
+                if (project.SourceFiles && project.SourceFiles.length > 0 && CSharpAdapter._checkFilters(project.Path, filters)) {
                     let newProject = new Project();
                     newProject.Name = project.Name;
                     newProject.Path = project.Path;
@@ -337,7 +348,7 @@ export class OmnisharpAdapter implements TestAdapter {
         }
         if (event.info.MsBuild && event.info.MsBuild.Projects) {
             for (const project of event.info.MsBuild.Projects) {
-                if (project.SourceFiles && project.SourceFiles.length > 0) {
+                if (project.SourceFiles && project.SourceFiles.length > 0 && CSharpAdapter._checkFilters(project.Path, filters)) {
                     let newProject = new Project();
                     newProject.Name = project.AssemblyName;
                     newProject.Path = project.Path;

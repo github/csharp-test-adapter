@@ -658,6 +658,9 @@ export namespace V2 {
         Message: string;
     }
 
+    export interface TestCompletedEvent extends DotNetTestResult {
+    }
+
     export interface BlockStructureRequest {
         FileName: string;
     }
