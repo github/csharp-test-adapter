@@ -4,7 +4,7 @@
   "description": "Run C# tests in the sidebar of Visual Studio Code",
   "icon": "icon.png",
   "author": "Joshua Brooks <samirat@github.com>",
-  "publisher": "github",
+  "publisher": "samirat",
   "version": "1.1.1",
   "license": "MIT",
   "homepage": "https://github.com/github/csharp-test-adapter",
@@ -29,18 +29,25 @@
     "watch": "tsc -w",
     "rebuild": "npm run clean && npm run build",
     "package": "vsce package",
-    "publish": "vsce publish"
+    "publish": "vsce publish",
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "esbuild ./src/main.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "test-compile": "tsc -p ./"
   },
   "dependencies": {
     "minimatch": "^3.0.4",
+    "rxjs": "6.4.0",
     "tslib": "^1.9.3",
     "vscode-test-adapter-api": "^1.7.0",
-    "vscode-test-adapter-util": "^0.7.0",
-    "rxjs": "6.4.0"
+    "vscode-test-adapter-util": "^0.7.0"
   },
   "devDependencies": {
     "@types/minimatch": "^3.0.3",
+    "@types/node": "^16.11.6",
     "@types/vscode": "^1.42.0",
+    "esbuild": "^0.13.9",
     "typescript": "^3.5.3",
     "vsce": "^1.65.0",
     "vscode-test": "^1.4.0"
