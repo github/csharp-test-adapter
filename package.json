@@ -37,7 +37,7 @@
     "test-compile": "tsc -p ./"
   },
   "dependencies": {
-    "minimatch": "^3.0.4",
+    "minimatch": "^3.0.5",
     "rxjs": "6.4.0",
     "tslib": "^1.9.3",
     "vscode-test-adapter-api": "^1.7.0",
